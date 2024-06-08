@@ -23,7 +23,7 @@ export const useBoardStore = defineStore("boardStore", () => {
       state.zoom = value;
 
       const center = getCenter();
-      panzoom.smoothZoom(center.x, center.y, factor);
+      panzoom.zoomTo(center.x, center.y, factor);
     },
   });
 
@@ -55,23 +55,24 @@ export const useBoardStore = defineStore("boardStore", () => {
       maxZoom: state.maxZoom,
       minZoom: state.minZoom,
       smoothScroll: false,
+      zoomSpeed: 1.2,
     });
 
     // Update board state on panning, zooming
     panzoom.on("pan", () => {
       const pzInfo = panzoom.getTransform();
+
       // x,y are inverted
       state.x = parseInt(-pzInfo.x);
       state.y = parseInt(-pzInfo.y);
-      state.zoom = pzInfo.scale;
     });
 
     panzoom.on("zoom", () => {
       const pzInfo = panzoom.getTransform();
-      // x,y are inverted
-      state.x = parseInt(-pzInfo.x);
-      state.y = parseInt(-pzInfo.y);
-      state.zoom = pzInfo.scale;
+
+      // Panzoom API has reverted x, y orientations for whatever reasons
+      panzoom.smoothMoveTo(-state.x, -state.y); // Just to ensure that x,y are correct before zooming (zoomend event does not seem to work)
+      state.zoom = pzInfo.scale; // Update the scale value
     });
 
     return panzoom;
@@ -85,14 +86,11 @@ export const useBoardStore = defineStore("boardStore", () => {
    */
   function moveTo(x, y, zoomScale = 1) {
     try {
-      // Zoom takes a factor, not zoom value => needed conversion
-      zoom.value = zoomScale;
-
-      // Panzoom API has reverted x, y orientations for whatever reasons
-      panzoom.smoothMoveTo(-x, -y);
-
       state.x = x;
       state.y = y;
+
+      // Setting a zoom value will ensure moving to current x,y coordinates
+      zoom.value = zoomScale;
     } catch (e) {
       throw new Error("An error ocurred during panzoom! ", e);
     }
@@ -130,6 +128,7 @@ export const useBoardStore = defineStore("boardStore", () => {
     initBoard,
     getBoard,
     moveTo,
+
     getHeight,
     getWidth,
     getCenter,

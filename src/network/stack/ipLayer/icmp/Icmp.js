@@ -3,6 +3,8 @@ import {
   PacketType,
   IcmpType as t,
 } from "../../../../utils/constants";
+import { reprIp } from "../../../../utils/utils";
+
 import Packet from "../../../Packet";
 import NetworkStack from "../../NetworkStack";
 import IpPacket from "../IpPacket";
@@ -87,6 +89,7 @@ export default class Icmp {
     packet.dstIpAddress = dstIpAddress;
     packet.type = PacketType.ICMP;
 
+    packet.report(`Pinging ${reprIp(packet.dstIpAddress)}...`);
     this._sendToIpLayer(packet);
 
     const response = this.buffer.get(icmpRequest.id);
@@ -113,7 +116,7 @@ export default class Icmp {
    * @param {*} icmpType
    * @returns
    */
-  resolve(packet, icmpType) {
+  resolveWithType(packet, icmpType) {
     const ipPacket = packet.getUnit(IpPacket);
     if (!ipPacket) return;
 
@@ -125,8 +128,7 @@ export default class Icmp {
   }
 
   /**
-   * Deals with an incoming ICMP IP packet, responds
-   * accordingly if needed
+   * Deals with an incoming ICMP IP packet, responds if necessary
    * @param {IcmpMessage} icmpMessage A received ICMP message
    * @param {IpPacket} ipPacket An IP packet that contains an ICMP message
    * @param {Packet} packet
@@ -140,7 +142,11 @@ export default class Icmp {
       const icmpResponse = IcmpMessage.echoReply(packet);
       icmpResponse.id = icmpMessage.id;
 
-      const replyPacket = packet.response(icmpResponse, "ICMP", "Echo reply");
+      // A packet should be committed in case it's sent to itself
+      const replyPacket = packet
+        .response(icmpResponse, "ICMP", "Echo reply")
+        .commit();
+      replyPacket.startPoint = this._stack.getHost();
       replyPacket.dstIpAddress = ipPacket.srcIpAddress;
       replyPacket.ipProtocol = IpProtocol.ICMP;
       replyPacket.type = PacketType.ICMP;

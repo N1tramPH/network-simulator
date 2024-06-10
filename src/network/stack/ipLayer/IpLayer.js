@@ -71,8 +71,9 @@ export default class IpLayer extends Layer {
 
     const route = this.route.resolve(packet, ipPacket);
 
-    // Also check if the device isn't sending a packet to itself
+    // Also check if the device is sending packet to itself
     if (this._isRecipient(ipPacket)) {
+      packet.endPoint = this.stack.getHost(); // Ensure the endPoint is set
       return this._resolveProtocol(packet, ipPacket);
     }
 

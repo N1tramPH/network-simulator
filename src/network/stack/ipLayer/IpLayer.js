@@ -7,6 +7,7 @@ import Icmp from "./icmp/Icmp.js";
 import RoutingProtocol from "./routing/RoutingProtocol.js";
 import NetworkStack from "../NetworkStack.js";
 import Packet from "../../Packet.js";
+import DataUnit from "../DataUnit.js";
 
 export default class IpLayer extends Layer {
   /**
@@ -15,11 +16,21 @@ export default class IpLayer extends Layer {
    */
   constructor(stack) {
     super(stack);
-    this.dataUnit = IpPacket;
-
     this.forwarding = false;
 
-    this.route = new RoutingProtocol(stack, this);
+    /**
+     * @type {DataUnit}
+     */
+    this.dataUnit = IpPacket;
+
+    /**
+     * @type {RoutingProtocol}
+     */
+    this.route = new RoutingProtocol(stack);
+
+    /**
+     * @type {Icmp}
+     */
     this.icmp = new Icmp(stack);
   }
 
@@ -78,7 +89,6 @@ export default class IpLayer extends Layer {
     }
 
     ipPacket.computeTotalLength();
-
     if (route) this.sendToLower(packet);
   }
 

@@ -47,7 +47,7 @@ export default class IpAddress extends Address {
     let address;
     let netmaskLength = 32;
 
-    // Parsing an adress from a string
+    // Parsing an address from a string
     if (!input) {
       // When invalid input is given
       // a wildcard IP address is created (0.0.0.0/0)

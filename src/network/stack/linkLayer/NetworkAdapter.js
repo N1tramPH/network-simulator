@@ -10,8 +10,8 @@ import CAMTable from "./CAMTable.js";
 
 /**
  * Creates an array of 'count' physical ports set to given network interface.
- * @param {*} adapter Adapter which ports are to be initialized
- * @param {*} count Number of ports
+ * @param {NetworkAdapter} adapter Adapter whose ports are to be initialized
+ * @param {Number} count Number of ports
  * @returns an array of 'count' physical ports set to given network interface
  */
 function _initPorts(adapter, count) {
@@ -27,8 +27,7 @@ function _initPorts(adapter, count) {
 
 export default class NetworkAdapter {
   /**
-   * Represents a hardware component that facilitates
-   * a physical connection of devices in the network.
+   * Represents a hardware component that facilitates a physical connection of devices in the network.
    * Each Adapter is uniquely identified by its:
    *  - MAC address (physical)
    *  - IP address (logical) - (only IPv4, unique within a local network)
@@ -45,11 +44,22 @@ export default class NetworkAdapter {
     // For example, a router might want to implement an interface acting like a switch at L2
     this._mode = l.L3;
 
-    // The device the adapter is installed on
+    /**
+     * The device the adapter is installed on
+     * @type {Device}
+     */
     this._mountOn = mountOn;
 
     // Defining addresses is delegated to a Device
+
+    /**
+     * @type {MacAddress}
+     */
     this._macAddress = null;
+
+    /**
+     * @type {MacAddress}
+     */
     this._ipAddress = null;
 
     // Whether accept all frames or not, regardless of the receiver
@@ -59,9 +69,15 @@ export default class NetworkAdapter {
     this.acceptBuffer = [];
     this.acceptBufferSize = 1024;
 
+    /**
+     * @type {PhysicalPort[]}
+     */
     this.ports = _initPorts(this, portCount);
 
-    // To be initialized by a L2 device
+    /**
+     * Content Address Memory - be initialized by a L2 device
+     * @type {CAMTable}
+     */
     this.cam = null;
   }
 

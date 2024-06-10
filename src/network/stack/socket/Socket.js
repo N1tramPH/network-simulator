@@ -15,6 +15,7 @@ import Packet from "../../Packet";
 import SocketAddress from "./SocketAddress";
 import NetworkStack from "../NetworkStack";
 import IpAddress from "../ipLayer/IpAddress";
+import TransportLayer from "../transportLayer/TransportLayer";
 
 export default class Socket {
   /**
@@ -33,37 +34,78 @@ export default class Socket {
   ) {
     this.ipVersion = ip[ipVersion] ? ipVersion : ip.IPV4;
     this.protocol = ip[protocol] ? protocol : tp.TCP;
-    this.type = type; //
+    this.type = type;
 
+    /**
+     * @type {NetworkStack}
+     */
     this.networkStack = networkStack;
+
+    /**
+     * @type {TransportLayer}
+     */
     this.transportLayer = networkStack.transportLayer;
 
     // Valid states are specified in states variable
     this._state = s.CLOSED;
     this.isBound = false;
 
+    /**
+     * @type {SocketAddress}
+     */
     this.localAddress = new SocketAddress("0.0.0.0/0", "*");
+
+    /**
+     * @type {SocketAddress}
+     */
     this.remoteAddress = new SocketAddress("0.0.0.0/0", "*");
 
     // Abstract application data,
+    /**
+     * @type {Data}
+     */
     this.sendBuffer = new Data(floor(3000, -2));
+
+    /**
+     * @type {Data}
+     */
     this.receiveBuffer = new Data(floor(3000, -2));
 
-    // Mapping of sent, received data in seqNum:bytes
+    /**
+     * Mapping of sent, received data in seqNum:bytes
+     * @type {Map}
+     */
     this.receiveMap = new Map();
+
+    /**
+     * @type {Map}
+     */
     this.sendMap = new Map();
 
     this.seqNum = floor(random(1000, 5000), -2); // ISN
     this.ackNum = null;
 
+    /**
+     * @type {Socket}
+     */
     this.parent = null;
+
+    /**
+     * @type {Socket[]}
+     */
     this.children = [];
 
     // To simplify functionalities outside of socket
     this.id = nanoid(5);
-    this.otherId = null; // temporary bond with other socket, actually indicates some kind of communication took place
+    this.otherId = null; // temporary bonding with other socket, actually indicates some kind of communication took place
   }
 
+  /**
+   *
+   * @param {*} data Exported data (produced by ExportData())
+   * @param {NetworkStack} networkStack A network stack associated with a socket
+   * @returns An imported instance of a socket
+   */
   static fromExport(data, networkStack) {
     try {
       if (!data) return;

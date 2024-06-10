@@ -7,12 +7,23 @@ import UdpDatagram from "./udp/UdpDatagram.js";
 import Udp from "./udp/Udp.js";
 import Tcp from "./tcp/Tcp.js";
 import Packet from "../../Packet.js";
+import NetworkStack from "../NetworkStack.js";
 
 export default class TransportLayer extends Layer {
+  /**
+   * @param {NetworkStack} stack
+   */
   constructor(stack) {
     super(stack);
 
+    /**
+     * @type {Tcp}
+     */
     this.tcp = new Tcp();
+
+    /**
+     * @type {Udp}
+     */
     this.udp = new Udp();
   }
 
@@ -69,7 +80,7 @@ export default class TransportLayer extends Layer {
     const socket = this.stack.findSocket(localPort, remoteAddress);
     if (!socket) {
       packet.report(`No process listening\non port ${localPort}!`);
-      return this.stack.icmp.resolve(packet, IcmpType.dstUnreachable);
+      return this.stack.icmp.resolveWithType(packet, IcmpType.dstUnreachable);
     }
 
     const response =

@@ -70,8 +70,9 @@ export const useBoardStore = defineStore("boardStore", () => {
     panzoom.on("zoom", () => {
       const pzInfo = panzoom.getTransform();
 
-      // Panzoom API has reverted x, y orientations for whatever reasons
-      panzoom.smoothMoveTo(-state.x, -state.y); // Just to ensure that x,y are correct before zooming (zoomend event does not seem to work)
+      // Ensuring that x,y are correct before zooming (zoomend event does not seem to work)
+      panzoom.smoothMoveTo(-state.x, -state.y); // Panzoom API has reverted x, y orientations for whatever reasons
+
       state.zoom = pzInfo.scale; // Update the scale value
     });
 

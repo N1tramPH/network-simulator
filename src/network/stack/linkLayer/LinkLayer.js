@@ -2,17 +2,20 @@ import { FrameType } from "../../../utils/constants.js";
 import Layer from "../Layer.js";
 import LinkFrame from "./LinkFrame.js";
 import Arp from "./AddressResolution/Arp.js";
+import NetworkAdapter from "./NetworkAdapter.js";
 
 export default class LinkLayer extends Layer {
   constructor(stack) {
     super(stack);
     this.dataUnit = LinkFrame;
-    this.networkAdapters = stack.networkAdapters;
-
-    // ARP stack, including ARP table
 
     /**
-     * An ARP stack
+     * @type {NetworkAdapter[]}
+     */
+    this.networkAdapters = stack.networkAdapters;
+
+    /**
+     * ARP stack, includes ARP table
      * @type {Arp}
      */
     this.arp = new Arp(stack, this.networkAdapters);

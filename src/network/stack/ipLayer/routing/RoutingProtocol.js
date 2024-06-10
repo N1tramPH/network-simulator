@@ -5,14 +5,20 @@ import { IcmpType } from "../../../../utils/constants";
 import RoutingTable from "./RoutingTable";
 import Packet from "../../../Packet";
 import IpPacket from "../IpPacket";
+import NetworkStack from "../../NetworkStack";
 
 const getTTL = () => parseInt(useSimulationStore().timeToLive);
 
 export default class RoutingProtocol {
-  constructor(stack, ipLayer) {
+  constructor(stack) {
+    /**
+     * @type {NetworkStack}
+     */
     this.stack = stack;
-    this.ipLayer = ipLayer;
 
+    /**
+     * @type {RoutingTable}
+     */
     this.routingTable = new RoutingTable(stack.networkAdapters);
   }
 
@@ -29,7 +35,7 @@ export default class RoutingProtocol {
       packet.report("Route\nnot found!");
       packet.report("IP packet\ndropped");
       packet.commit(); // Commit a packet to make sure the reports is shown
-      return this.stack.icmp.resolve(packet, IcmpType.dstUnreachable);
+      return this.stack.icmp.resolveWithType(packet, IcmpType.dstUnreachable);
     }
 
     const outIface = route.iface;
@@ -45,7 +51,7 @@ export default class RoutingProtocol {
 
     if (!ipPacket.timeToLive.decimal) {
       packet.report("TTL exceeded!");
-      return this.stack.icmp.resolve(packet, IcmpType.timeExceeded);
+      return this.stack.icmp.resolveWithType(packet, IcmpType.timeExceeded);
     }
 
     ipPacket.computeCRC(); // Recompute checksum

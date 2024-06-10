@@ -1,4 +1,5 @@
 import { nanoid } from "nanoid";
+import PhysicalPort from "./PhysicalPort";
 
 /**
  * Represents a physical link connecting to network interfaces/adapters
@@ -6,8 +7,8 @@ import { nanoid } from "nanoid";
 export default class PhysicalLink {
   /**
    * Creates a physical link between 2 ports.
-   * For simplicity, both ports must be defined on initiation
-   * ==> plugging un unplugging is not taken into consideration
+   * For simplicity, both ports must be defined on instantiation
+   * ==> plugging, unplugging is not taken into consideration
    * ==> If one of the ports is not defined => Exception
    * @param {PhysicalPort} port1 First port end of the link
    * @param {PhysicalPort} port2 Second port end of the link
@@ -29,15 +30,20 @@ export default class PhysicalLink {
     this.id = `link-${nanoid(5)}`;
 
     // Represent the ports the link is plugged in
+
+    /**
+     * @type {PhysicalPort}
+     */
     this.end1 = port1;
+
+    /**
+     * @type {PhysicalPort}
+     */
     this.end2 = port2;
 
     // Register the link on ports
     port1.plug(this);
     port2.plug(this);
-
-    // In Mb/s, not used yet
-    this.speed = speed;
   }
 
   // Not the best practice, but eases the access to a endpoint devices
@@ -56,7 +62,7 @@ export default class PhysicalLink {
   /**
    * Determines if data can be send through a link based on whether
    * the two endpoints are connected to a device or not.
-   * @returns Whether data can be transfered through a link.
+   * @returns Whether data can be transferred through a link.
    */
   isTransferable() {
     try {

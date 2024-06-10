@@ -23,6 +23,12 @@ export default class Icmp {
    */
   constructor(stack) {
     this._stack = stack;
+
+    /**
+     * Stores sent ICMP messages for latter potential response identification.
+     * (Mapping based on ICMP message id)
+     * @type {Map}
+     */
     this.buffer = new Map();
   }
 
@@ -41,10 +47,10 @@ export default class Icmp {
   /**
    * Creates an ICMP message informing sender of a certain event
    * such as Echo reply, Destination unreachable, Time exceeded
-   * @param {IpPacket} ipPacket
-   * @param {*} icmpType
-   * @param {Packet} packet
-   * @returns
+   * @param {IpPacket} ipPacket An IP packet of a sender
+   * @param {*} icmpType A response ICMP type
+   * @param {Packet} packet A Packet from a sender (encapsulating IP packet)
+   * @returns {Packet} A response Packet with an ICMP response
    */
   _createMessage(ipPacket, icmpType, packet) {
     let replyPacket;
@@ -65,17 +71,20 @@ export default class Icmp {
         break;
     }
 
+    if (!replyPacket) return null;
+
     icmpResponse.computeCRC();
+    replyPacket.startPoint = this._stack.getHost();
     replyPacket.data = icmpResponse;
     replyPacket.dstIpAddress = ipPacket.srcIpAddress;
     replyPacket.ipProtocol = IpProtocol.ICMP;
     replyPacket.type = PacketType.ICMP;
+
     return replyPacket;
   }
 
   /**
-   * Pings a device with a given IP address.
-   * (Sends an echo request)
+   * Pings a device with a given IP address (Sends an echo request).
    * @param {IpAddress} dstIpAddress An IP address of the remote device
    */
   ping(dstIpAddress) {
@@ -112,7 +121,7 @@ export default class Icmp {
 
   /**
    * Creates a new ICMP event specified by icmpType
-   * @param {Packet} packet
+   * @param {Packet} packet A Packet the caused a certain event
    * @param {*} icmpType
    * @returns
    */
@@ -120,7 +129,7 @@ export default class Icmp {
     const ipPacket = packet.getUnit(IpPacket);
     if (!ipPacket) return;
 
-    const response = this._createMessage(ipPacket, icmpType, packet);
+    const response = this._createMessage(ipPacket, icmpType, packet).commit();
     if (ipPacket.protocol.decimal === IpProtocol.ICMP)
       response.data.id = ipPacket.data.id; // assign ICMP response an id of a received ICMP message so a recipient can map a response
 

@@ -1,7 +1,7 @@
 import gsap from "gsap";
 import { defineStore } from "pinia";
 import { computed, reactive, toRaw, watch } from "vue";
-import { clamp, uniq } from "lodash-es";
+import { clamp, uniq, isUndefined } from "lodash-es";
 
 import { usePacketStore } from "./PacketStore";
 import { animate } from "../animations/animations";
@@ -211,8 +211,23 @@ export const useSimulationStore = defineStore("simulationStore", () => {
     progress.value = timeline.progress(); // Update the progress
   }
 
-  function seek(time) {
-    timeline.seek(time);
+  /**
+   * @param {[Number, String]} position Either a time or a label within a timeline to be moved to
+   */
+  function seek(position) {
+    // Seeking based on the label
+    if (typeof position === "string") {
+      // Move to the very start of the label (before label if there's any)
+      const beforeEvent = timeline.labels[`${position}-b`];
+      timeline.seek(!isUndefined(beforeEvent) ? beforeEvent : position);
+
+      // Update the labelIdx based on seeked label
+      state.animation.labelIdx = state.animation.labels.indexOf(position);
+      return;
+    }
+
+    // Seeking based on an absolute time
+    timeline.seek(position);
   }
 
   /**
@@ -279,7 +294,7 @@ export const useSimulationStore = defineStore("simulationStore", () => {
     }
   }
 
-  /******** Managing SimulationStore settings ********/
+  /******** Managing store settings ********/
 
   /**
    * Configures a timeline instance based on the settings within a store

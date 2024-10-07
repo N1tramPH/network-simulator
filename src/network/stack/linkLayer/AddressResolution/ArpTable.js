@@ -6,16 +6,33 @@ import MacAddress from "../MacAddress";
 const IP = 0;
 const MAC = 1;
 
+/**
+ * ARP table to store mappings between IP addresses and MAC addresses
+ */
 export default class ArpTable {
+  /**
+   * Constructs a new ARP table
+   */
   constructor() {
-    // array of pairs
+    // An array of { id, ipAddress, macAddress, type }
     this.data = [];
   }
 
+  /**
+   * Returns a string representation of the ARP table
+   * @returns {string} String representation of the ARP table
+   */
   toString() {
     return this.data.map((record) => `${record[IP]} - ${record[MAC]}\n`).join();
   }
 
+  /**
+   * Adds a new entry to the ARP table
+   * @param {string} ipAddress IP address of the node
+   * @param {string} macAddress MAC address of the node
+   * @param {string} type Type of the entry (static or dynamic)
+   * @throws {Error} If the type is not either 'static' or 'dynamic'
+   */
   add(ipAddress, macAddress, type = "static") {
     if (!(type === "static" || type === "dynamic")) {
       throw new Error('Type must be either "static" or "dynamic"!');
@@ -29,10 +46,20 @@ export default class ArpTable {
     });
   }
 
+  /**
+   * Removes an entry from the ARP table
+   * @param {string} id ID of the entry to be removed
+   */
   remove(id) {
     this.data = this.data.filter((row) => row.id !== id);
   }
 
+  /**
+   * Updates an entry in the ARP table
+   * @param {string} id ID of the entry to be updated
+   * @param {Object} updated Updated data for the entry
+   * @throws {Error} If an error occurs while updating the entry
+   */
   update(id, updated) {
     const u = updated;
 
@@ -47,13 +74,17 @@ export default class ArpTable {
   /**
    * Finds the MAC address that is mapped with a given IP address
    * @param {IpAddress} ipAddress IP address of node whose MAC address is looked for
-   * @returns A MAC address mapped to a given IP address or null
+   * @returns {MacAddress|null} MAC address mapped to a given IP address or null
    */
   query(ipAddress) {
     const res = this.data.find((row) => ipAddress.compare(row.ipAddress));
     return res ? res.macAddress : null;
   }
 
+  /**
+   * Exports the ARP table data
+   * @returns {Array} Array of objects containing IP address, MAC address, and type of each entry
+   */
   exportData() {
     return this.data.map((row) => {
       return {
@@ -64,6 +95,11 @@ export default class ArpTable {
     });
   }
 
+  /**
+   * Imports data into the ARP table
+   * @param {Array} data Array of objects containing IP address, MAC address, and type of each entry
+   * @throws {Error} If an unexpected error occurs during import
+   */
   importData(data) {
     try {
       if (!data) return;

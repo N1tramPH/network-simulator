@@ -3,43 +3,57 @@ import { orderBy } from "lodash-es";
 
 import IpAddress, { WILDCARD_IP } from "../IpAddress";
 
+/**
+ * Converts an address to IpAddress instance
+ * @param {IpAddress | string} address An address to convert
+ * @returns {IpAddress} An IpAddress instance
+ */
 const setIpAddress = (address) => {
   return address instanceof IpAddress ? address : new IpAddress(address);
 };
 
+/**
+ * A routing table with static and dynamic routes
+ */
 export default class RoutingTable {
   /**
-   * @param {NetworkAdapter} ifaces Gateway interfaces, also used to create dynamic on-link routes
+   * @param {NetworkAdapter[]} ifaces Gateway interfaces, also used to create dynamic on-link routes
    */
   constructor(ifaces) {
     /**
      * A table with static IP routes
+     * @type {Object[]}
      */
     this.staticRoutes = [];
 
     /**
      * Network interfaces that make up the dynamic IP routes
+     * @type {NetworkAdapter[]}
      */
     this.ifaces = ifaces;
   }
 
+  /**
+   * Returns dynamic routes defined by network interfaces
+   * @returns {Object[]} An array of dynamic routes
+   */
   get dynamicRoutes() {
     return this.ifaces.map((iface) => {
       return {
-        id: nanoid(6),
-        dstIpAddress: iface.ipAddress.netAddress,
-        gateway: new IpAddress("0.0.0.0/0"),
-        iface: iface,
-        metric: 1,
-        dynamic: true,
+        id: nanoid(6), // Generate a unique ID
+        dstIpAddress: iface.ipAddress.netAddress, // Destination IP address
+        gateway: new IpAddress("0.0.0.0/0"), // Gateway IP address
+        iface: iface, // Network interface
+        metric: 1, // Metric
+        dynamic: true, // Flag indicating the route is dynamic
       };
     });
   }
 
   /**
    * Returns a routing table of statically set routes along with
-   * dynamic ones defined by network interfaces.
-   * Individual rows are sorted in the descending order of destination IP netmask length
+   * dynamic ones defined by network interfaces
+   * @returns {Object[]} A routing table
    */
   get data() {
     const table = [...this.staticRoutes, ...this.dynamicRoutes];
@@ -48,15 +62,15 @@ export default class RoutingTable {
 
   /**
    * Adds a new row to a routing table
-   * @param {IpAddress} dstIpAddress A destination IP address
-   * @param {ByteArray} networkMask A network mask of an IP address, set to null, if CIDR mask was given, otherwise defaults to mask of length 32
-   * @param {IpAddress} gateway An IP address of a following node to pass the packet to
+   * @param {IpAddress | string} dstIpAddress A destination IP address
+   * @param {IpAddress | string} gateway An IP address of a following node to pass the packet to
    * @param {NetworkAdapter} iface Name of an interface responsible for passing the packet (for easier import/export)
    * @param {Number} metric Price of the route
+   * @param {string} id A unique ID for the route (optional)
    */
   add(dstIpAddress, gateway, iface, metric = 1, id = null) {
     const record = {
-      id: id ? id : nanoid(6),
+      id: id ? id : nanoid(6), // Generate a unique ID if not provided
       dstIpAddress: setIpAddress(dstIpAddress),
       gateway: setIpAddress(gateway),
       iface: iface,
@@ -66,6 +80,11 @@ export default class RoutingTable {
     this.staticRoutes.push(record);
   }
 
+  /**
+   * Removes a row from the routing table
+   * @param {string} id The ID of the row to remove
+   * @throws {Error} If the row does not exist or is a dynamic route
+   */
   remove(id) {
     const beforeLength = this.staticRoutes.length;
     this.staticRoutes = this.staticRoutes.filter((r) => r.id !== id);
@@ -75,6 +94,12 @@ export default class RoutingTable {
     }
   }
 
+  /**
+   * Updates a row in the routing table
+   * @param {string} id The ID of the row to update
+   * @param {Object} updated The updated row data
+   * @throws {Error} If an error occurs during the update process
+   */
   update(id, updated) {
     const u = updated;
     const gateway = u.gateway === "On-link" ? WILDCARD_IP : u.gateway;
@@ -88,8 +113,9 @@ export default class RoutingTable {
   }
 
   /**
-   * @param {IpAddress} dstIpAddress
-   * @returns a matching route
+   * Queries the routing table for a matching route
+   * @param {IpAddress} dstIpAddress The destination IP address to query
+   * @returns {Object | undefined} The matching route, or undefined if no match is found
    */
   query(dstIpAddress) {
     let route = this.data.find((row) =>
@@ -108,6 +134,10 @@ export default class RoutingTable {
     return route;
   }
 
+  /**
+   * Exports the routing table data
+   * @returns {Object[]} An array of route data
+   */
   exportData() {
     return this.staticRoutes.map((row) => {
       return {
@@ -119,6 +149,11 @@ export default class RoutingTable {
     });
   }
 
+  /**
+   * Imports routing table data
+   * @param {Object[]} data An array of route data
+   * @throws {Error} If importing fails
+   */
   importData(data) {
     try {
       if (!data) return;

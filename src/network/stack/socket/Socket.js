@@ -17,10 +17,12 @@ import NetworkStack from "../NetworkStack";
 import IpAddress from "../ipLayer/IpAddress";
 import TransportLayer from "../transportLayer/TransportLayer";
 
+/**
+ * Represents a network socket, facilitating communication endpoints.
+ */
 export default class Socket {
   /**
-   * Instantiates a new network Socket facilitating
-   * a communication endpoint
+   * Instantiates a new network Socket.
    * @param {String} ipVersion IP version - "IPV4"
    * @param {String} protocol Transport protocol - "TCP/UDP"
    * @param {String} type Distinguishing "server"/"client" socket
@@ -32,16 +34,19 @@ export default class Socket {
     type = "client",
     networkStack = null
   ) {
+    // Set ipVersion and protocol
     this.ipVersion = ip[ipVersion] ? ipVersion : ip.IPV4;
     this.protocol = ip[protocol] ? protocol : tp.TCP;
     this.type = type;
 
     /**
+     * Parent network stack.
      * @type {NetworkStack}
      */
     this.networkStack = networkStack;
 
     /**
+     * Transport layer instance.
      * @type {TransportLayer}
      */
     this.transportLayer = networkStack.transportLayer;
@@ -51,28 +56,32 @@ export default class Socket {
     this.isBound = false;
 
     /**
+     * Local address of the socket.
      * @type {SocketAddress}
      */
     this.localAddress = new SocketAddress("0.0.0.0/0", "*");
 
     /**
+     * Remote address of the socket.
      * @type {SocketAddress}
      */
     this.remoteAddress = new SocketAddress("0.0.0.0/0", "*");
 
-    // Abstract application data,
+    // Abstract application data
     /**
+     * Buffer for sending data.
      * @type {Data}
      */
     this.sendBuffer = new Data(floor(3000, -2));
 
     /**
+     * Buffer for receiving data.
      * @type {Data}
      */
     this.receiveBuffer = new Data(floor(3000, -2));
 
     /**
-     * Mapping of sent, received data in seqNum:bytes
+     * Mapping of sent, received data in seqNum:bytes.
      * @type {Map}
      */
     this.receiveMap = new Map();
@@ -82,15 +91,17 @@ export default class Socket {
      */
     this.sendMap = new Map();
 
-    this.seqNum = floor(random(1000, 5000), -2); // ISN
+    this.seqNum = floor(random(1000, 5000), -2); // Initial Sequence Number
     this.ackNum = null;
 
     /**
+     * Parent socket.
      * @type {Socket}
      */
     this.parent = null;
 
     /**
+     * Child sockets.
      * @type {Socket[]}
      */
     this.children = [];
@@ -101,7 +112,7 @@ export default class Socket {
   }
 
   /**
-   *
+   * Imports a socket from exported data.
    * @param {*} data Exported data (produced by ExportData())
    * @param {NetworkStack} networkStack A network stack associated with a socket
    * @returns An imported instance of a socket
@@ -135,63 +146,115 @@ export default class Socket {
     }
   }
 
+  /**
+   * Getter for state.
+   * @returns {String} State of the socket.
+   */
   get state() {
     return this._state;
   }
 
+  /**
+   * Setter for state.
+   * @param {String} value State of the socket.
+   */
   set state(value) {
     this.setState(value);
   }
 
+  /**
+   * Getter for destination ip address.
+   * @returns {string|IpAddress} Destination IP address.
+   */
   get dstIpAddress() {
     return this.remoteAddress.ip;
   }
 
+  /**
+   * Setter for destination ip address.
+   * @param {string|IpAddress} value Destination ip address.
+   */
   set dstIpAddress(value) {
     this.remoteAddress.ip = value;
   }
 
+  /**
+   * Getter for source ip address.
+   * @returns {string|IpAddress} Source ip address.
+   */
   get srcIpAddress() {
     return this.localAddress.ip;
   }
 
+  /**
+   * Setter for source ip address.
+   * @param {string|IpAddress} value Source ip address.
+   */
   set srcIpAddress(value) {
     this.localAddress.ip = value;
   }
 
+  /**
+   * Getter for destination port.
+   * @returns {Number|string} Destination port.
+   */
   get dstPort() {
     return this.remoteAddress.port;
   }
 
+  /**
+   * Setter for destination port.
+   * @param {Number|string} value Destination port.
+   */
   set dstPort(value) {
     this.remoteAddress.port = value;
   }
 
+  /**
+   * Getter for source port.
+   * @returns {Number|string} Source port.
+   */
   get srcPort() {
     return this.localAddress.port;
   }
 
+  /**
+   * Setter for source port.
+   * @param {Number|string} value Source port.
+   */
   set srcPort(value) {
     this.localAddress.port = value;
   }
 
-  // Access to a source host
+  /**
+   * Getter for source host.
+   * @returns {Device} Source host.
+   */
   get device() {
     return this.networkStack ? this.networkStack.getHost() : null;
   }
 
   /**
-   * Handles moving data to the transport layer
-   * @param {Packet} packet
+   * Moves Packet to the transport layer.
+   * @param {Packet} packet Packet to be sent.
    */
   _transport(packet) {
     this.transportLayer.acceptFromUpper(packet);
   }
 
+  /**
+   * Checks if ackNum matches expectedAck.
+   * @param {Number} ackNum
+   * @returns {Boolean}
+   */
   _isAckExpected(ackNum) {
     return ackNum === this.socket.expectedAck;
   }
 
+  /**
+   * Getter for source host.
+   * @returns {Device} Source host.
+   */
   _getHost() {
     return this.networkStack.getHost();
   }
@@ -283,8 +346,8 @@ export default class Socket {
 
   /**
    * Binds a local IP address and port of a socket
-   * @param {*} srcIpAddress IP address of a server
-   * @param {*} srcPort A port number a socket is listening on
+   * @param {IpAddress} srcIpAddress IP address of a server
+   * @param {Number|string} srcPort A port number a socket is listening on
    */
   bind(srcIpAddress = null, srcPort = null) {
     console.log(this.isBound);
@@ -310,7 +373,7 @@ export default class Socket {
 
     const childSocket = this.networkStack.initSocket("server");
     childSocket.parent = this;
-    childSocket._state = s.LISTEN;
+    childSocket.listen();
 
     childSocket.localAddress = this.localAddress; // Local IP is same as parent's,
     childSocket.remoteAddress = remoteAddress; // Bind the remote address as well
@@ -411,17 +474,12 @@ export default class Socket {
    * @param {Number} payLoad
    */
   send(data = null) {
-    if (this.protocol === "UDP") {
+    if (this.protocol === "UDP")
       throw new Error("UDP protocol must use recvfrom/sendto methods!");
-    }
-
-    if (this.state !== s.ESTABLISHED) {
+    if (this.state !== s.ESTABLISHED)
       throw new Error("A connection must be established first!");
-    }
 
-    this.sendBuffer.set(data);
-
-    const payload = this.getData();
+    const payload = this.sendBuffer.set(data);
     if (!payload) throw new Error("There's no data to be sent!");
 
     const packet = this._initPacket(payload);
@@ -438,6 +496,12 @@ export default class Socket {
     this.receiveBuffer.push(packet.data);
   }
 
+  /**
+   * Sends data to a remote address using the transport layer.
+   * @param {Data} - The data to be sent.
+   * @param {SocketAddress|null} - The remote address to send the data to.
+   * @return {Packet} The packet that was sent.
+   */
   sendTo(data = new Data(), remoteAddress = null) {
     // Passing required data to transport layer
     this.remoteAddress = remoteAddress;

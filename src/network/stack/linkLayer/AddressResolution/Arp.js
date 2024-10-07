@@ -6,8 +6,17 @@ import ArpTable from "./ArpTable";
 import Packet from "../../../Packet";
 import IpPacket from "../../ipLayer/IpPacket";
 import NetworkAdapter from "../NetworkAdapter";
+import MacAddress from "../MacAddress";
 
+/**
+ * Class representing an Address Resolution Protocol (ARP).
+ */
 export default class Arp {
+  /**
+   * Creates an instance of ARP.
+   * @param {NetworkStack} stack - The network stack.
+   * @param {NetworkAdapter[]} networkAdapters - The array of network adapters.
+   */
   constructor(stack, networkAdapters) {
     this._stack = stack;
     this._networkAdapters = networkAdapters;
@@ -17,19 +26,19 @@ export default class Arp {
 
   /**
    * Checks if any of the interfaces on a device has
-   * a matching IP address to one in ARP reply
-   * @param {ArpMessage} arpMessage A received ARP message
-   * @param {NetworkAdapter} inIface An ingoing interface
-   * @returns Whether a device is a recipient an ARP message
+   * a matching IP address to one in ARP reply.
+   * @param {ArpMessage} arpMessage - A received ARP message.
+   * @param {NetworkAdapter} inIface - An ingoing interface.
+   * @returns {boolean} Whether a device is a recipient an ARP message.
    */
   _isRecipient(arpMessage, inIface) {
     return arpMessage.dstIpAddress.compare(inIface.ipAddress);
   }
 
   /**
-   * Processes an ARP message
-   * @param {ArpMessage} arpMessage  A received ARP message
-   * @param {Packet} packet  A received Packet
+   * Processes an ARP message.
+   * @param {ArpMessage} arpMessage - A received ARP message.
+   * @param {Packet} packet - A received Packet.
    */
   resolveMessage(arpMessage, packet) {
     const inIface = packet.inIface;
@@ -58,10 +67,11 @@ export default class Arp {
   }
 
   /**
-   * Resolves a corresponding MAC address to a given IP address
+   * Resolves a corresponding MAC address to a given IP address.
    * Checks an ARP cache, if there's no record, sends an ARP request.
-   * @param {IpAddress} ipAddress An IP to be translated into MAC
-   * @param {Packet} packet An outgoing Packet
+   * @param {IpAddress} ipAddress - An IP to be translated into MAC.
+   * @param {Packet} packet - An outgoing Packet.
+   * @returns {(MacAddress|undefined)} - The corresponding MAC address or undefined.
    */
   resolve(ipAddress, packet) {
     // Check in the cache for the ipAddress mapping

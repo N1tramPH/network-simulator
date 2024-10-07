@@ -9,6 +9,12 @@ import { nanoid } from "nanoid";
 import MacAddress from "../stack/linkLayer/MacAddress.js";
 import IpAddress from "../stack/ipLayer/IpAddress.js";
 
+/**
+ * Represents a device in the network.
+ * A device is a node that can have multiple network adapters attached to it.
+ * Each adapter is represented by a NetworkAdapter instance.
+ * Each device has a network stack which is responsible for managing network-related functionality.
+ */
 export default class Device extends Node {
   static maxAdapterCount = 1;
   static adapterPortCount = 1;
@@ -110,30 +116,56 @@ export default class Device extends Node {
     return this.layerType >= l.L4 ? this.networkStack.socketsTable : null;
   }
 
-  initCAM() {
-    this.networkStack.initCAM();
-  }
-
-  findSocket(srcPort, remoteAddress) {
-    return this.networkStack.findSocket(srcPort, remoteAddress);
-  }
-
   toString() {
     return `${this.type} (${this.name})`;
   }
 
+  /**
+   * Initializes the content address memory table.
+   * This is used by layer 2 devices.
+   */
+  initCAM() {
+    this.networkStack.initCAM();
+  }
+
+  /**
+   * Finds a socket by source port and remote address.
+   * This is used by layer 4 devices.
+   * @param {PhysicalPort} srcPort The source port of the socket
+   * @param {IpAddress} remoteAddress The remote address of the socket
+   * @returns The socket or null if not found
+   */
+  findSocket(srcPort, remoteAddress) {
+    return this.networkStack.findSocket(srcPort, remoteAddress);
+  }
+
+  /**
+   * Turns on the device.
+   */
   turnOn() {
     this._powerOn = true;
   }
 
+  /**
+   * Turns off the device.
+   */
   turnOff() {
     this._powerOn = false;
   }
 
+  /**
+   * Toggles the power state of the device.
+   */
   togglePower() {
     this._powerOn = !this._powerOn;
   }
 
+  /**
+   * Pings a destination IP address.
+   * This is used by layer 3 devices.
+   * @param {IpAddress} dstIpAddress The destination IP address to ping
+   * @returns {Boolean} True if the ping was successful, false otherwise
+   */
   ping(dstIpAddress) {
     if (this.layerType >= l.L3) {
       return this.networkStack.ping(dstIpAddress);
@@ -141,12 +173,26 @@ export default class Device extends Node {
   }
 
   /******* Sockets ********/
+  /**
+   * Initializes a socket.
+   * This is used by layer 4 devices.
+   * @param {String} type The type of the socket
+   * @param {String} ipVersion The IP version of the socket
+   * @param {String} protocol The protocol of the socket
+   * @returns The initialized socket
+   */
   initSocket(type = "client", ipVersion = "IPV4", protocol = "TCP") {
     if (this.layerType > l.L3) {
       return this.networkStack.initSocket(type, ipVersion, protocol);
     }
   }
 
+  /**
+   * Opens a socket.
+   * This is used by layer 4 devices.
+   * @param {Object} socket The socket to open
+   * @returns The open socket
+   */
   openSocket(socket) {
     if (this.layerType > l.L3) {
       return this.networkStack.openSocket(socket);
@@ -155,6 +201,11 @@ export default class Device extends Node {
 
   /******* Adapters ********/
 
+  /**
+   * Checks if an adapter name is unique.
+   * @param {String} name The name of the adapter to check
+   * @returns {Boolean} True if the name is unique, false otherwise
+   */
   isAdapterNameUnique(name) {
     return !this.networkAdapters.find((a) => a.name === name);
   }
@@ -163,8 +214,8 @@ export default class Device extends Node {
    * Initializes a new network adapter with minimal configuration.
    * ==> no IP or MAC addresses.
    * Specific configuration is delegated to subclasses.
-   * @param {*} name A of an adapter
-   * @returns
+   * @param {String} name The name of the adapter
+   * @returns The initialized adapter
    */
   initAdapter(name = "") {
     if (!this.isAdapterNameUnique(name)) {
@@ -184,13 +235,14 @@ export default class Device extends Node {
 
   /**
    * Adds a new network adapter.
-   * @param {*} name Name of the adapter
-   * @param {MacAddress} macAddress A MAC of an adapter, auto-generated if null
-   * @param {IpAddress} ipAddress An IP of an adapter, defaults to "0.0.0.0/0"
-   * @returns A newly created adapter
+   * @param {String} name The name of the adapter
+   * @param {MacAddress} macAddress The MAC address of the adapter, auto-generated if null
+   * @param {IpAddress} ipAddress The IP address of the adapter, defaults to "0.0.0.0/0"
+   * @returns The newly created adapter
    */
   addAdapter(name = "enp0s", macAddress = null, ipAddress = null) {
     const adapter = this.initAdapter(name);
+
     adapter.macAddress = macAddress ? macAddress : MacAddress.random();
 
     if (this.layerType >= l.L3) {
@@ -213,6 +265,13 @@ export default class Device extends Node {
     }
   }
 
+  /**
+   * Exports the data of the current object as a plain JavaScript object.
+   *
+   * @return {Object} An object containing the name, type, x and y coordinates,
+   *                  an array of exported network adapters, and an object
+   *                  containing exported socket table, routing table, and ARP table.
+   */
   exportData() {
     return {
       name: this.name,

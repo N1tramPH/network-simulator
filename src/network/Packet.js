@@ -24,35 +24,70 @@ export class Report {
   }
 }
 
-function flattenDepth(packet) {
+/**
+ * Flattens a packet structure in depth-first order.
+ *
+ * @param {Packet} packet - The packet to flatten.
+ * @return {Packet[]} An array of flattened packets.
+ */
+export function flattenDepth(packet) {
   const flattened = [];
 
   const internal = (packet) => {
+    // Flatten preceding packets
     packet.preceding.forEach((pred) => internal(pred));
+
+    // Add current packet to flattened array
     flattened.push(packet);
+
+    // Flatten children packets
     packet.children.forEach((c) => internal(c));
   };
 
+  // Start flattening from the given packet
   internal(packet);
+
+  // Return the flattened array
   return flattened;
 }
 
+/**
+ * Flattens a packet structure in breadth-first order.
+ *
+ * @param {Packet} packet - The packet to flatten.
+ * @return {Packet[]} An array of flattened packets.
+ */
 function flattenBreadth(packet) {
+  // Result array
   const flattened = [];
+
+  // Queue for BFS
   const q = new Queue();
+
+  // Enqueue the starting packet
   q.enqueue(packet);
 
+  // Loop until queue is empty
   while (!q.isEmpty()) {
+    // Dequeue a packet from the front of the queue
     packet = q.dequeue();
-    // Packets taking place before must be flattened individually
+
+    // Flatten preceding packets
     packet.preceding.forEach((pred) => {
-      flattenBreadth(pred).forEach((flatPred) => flattened.push(flatPred));
+      // Recursively flatten each preceding packet
+      flattenBreadth(pred)
+        // Append each flattened packet to the result array
+        .forEach((flatPred) => flattened.push(flatPred));
     });
 
+    // Enqueue children packets to the back of the queue
     packet.children.forEach((child) => q.enqueue(child));
+
+    // Add current packet to the result array
     flattened.push(packet);
   }
 
+  // Return the flattened array
   return flattened;
 }
 

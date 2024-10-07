@@ -4,9 +4,13 @@ import { IcmpType } from "../../../../utils/constants";
 import { nanoid } from "nanoid";
 
 /**
- * IPv4 packet structure
+ * Represents an ICMP message.
  */
 export default class IcmpMessage extends DataUnit {
+  /**
+   * Creates a new ICMP message.
+   * @param {*} data - The data of the message.
+   */
   constructor(data) {
     super(data, icmpMessageStruct);
     // 4 bytes from upper (transport) layer on responses (16bits identifier + 16bits sequence number)
@@ -16,7 +20,10 @@ export default class IcmpMessage extends DataUnit {
     this.id = nanoid(5); // To identify packets on ping etc.
   }
 
-  // Ping messages
+  /**
+   * Creates an ICMP echo request message.
+   * @returns {IcmpMessage} The ICMP echo request message.
+   */
   static echoRequest() {
     const message = new IcmpMessage();
     message.type = IcmpType.echoRequest;
@@ -24,6 +31,10 @@ export default class IcmpMessage extends DataUnit {
     return message;
   }
 
+  /**
+   * Creates an ICMP echo reply message.
+   * @returns {IcmpMessage} The ICMP echo reply message.
+   */
   static echoReply() {
     const message = new IcmpMessage();
     message.type = IcmpType.echoReply;
@@ -31,6 +42,10 @@ export default class IcmpMessage extends DataUnit {
     return message;
   }
 
+  /**
+   * Creates an ICMP time exceeded message.
+   * @returns {IcmpMessage} The ICMP time exceeded message.
+   */
   static timeExceeded() {
     const message = new IcmpMessage();
     message.type = IcmpType.timeExceeded;
@@ -38,6 +53,10 @@ export default class IcmpMessage extends DataUnit {
     return message;
   }
 
+  /**
+   * Creates an ICMP destination unreachable message.
+   * @returns {IcmpMessage} The ICMP destination unreachable message.
+   */
   static dstUnreachable() {
     const message = new IcmpMessage();
     message.type = IcmpType.dstUnreachable;
@@ -45,6 +64,10 @@ export default class IcmpMessage extends DataUnit {
     return message;
   }
 
+  /**
+   * Calculates the CRC (Cyclic Redundancy Check) of the ICMP message.
+   * @returns {number} The CRC value.
+   */
   getCRC() {
     const header = this.header.slice();
 
@@ -76,14 +99,25 @@ export default class IcmpMessage extends DataUnit {
     return ~sum & 0xffff; // Limit the inverted crc size to 16 bits
   }
 
+  /**
+   * Calculates the CRC of the ICMP message and sets it.
+   */
   computeCRC() {
     this.checksum = this.getCRC();
   }
 
+  /**
+   * Checks if the CRC of the ICMP message is valid.
+   * @returns {boolean} True if the CRC is valid, false otherwise.
+   */
   checkCRC() {
     return this.getCRC() === this.checksum.decimal;
   }
 
+  /**
+   * Returns a string representation of the ICMP message.
+   * @returns {string} The string representation of the ICMP message.
+   */
   toString() {
     return "ICMP message";
   }

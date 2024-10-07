@@ -70,7 +70,8 @@ export default class NetworkAdapter {
     this.acceptBufferSize = 1024;
 
     /**
-     * @type {PhysicalPort[]}
+     * Maps the the port id and the physical port instance
+     * @type {Map}
      */
     this.ports = _initPorts(this, portCount);
 
@@ -160,22 +161,38 @@ export default class NetworkAdapter {
     return this.mountOn.networkStack.linkLayer;
   }
 
+  /**
+   * Checks if the frame's destination MAC address matches the adapter's MAC address.
+   * If the adapter is in promiscuous mode, it accepts all frames.
+   *
+   * @param {LinkFrame} frame - The frame to check.
+   * @return {boolean} Whether the frame is a recipient of the adapter.
+   */
   _isRecipient(frame) {
     return this.promiscuousMode || this.macAddress.compare(frame.dstMacAddress);
   }
 
   /**
-   * Finds a first available physical port on an interface
-   * @returns a first available physical port on an interface
+   * Finds a first available physical port on an interface.
+   *
+   * @returns {PhysicalPort} The first available physical port on an interface.
+   *         Returns undefined if no free port is found.
    */
   _findFreePort() {
     return this.ports.find((p) => p.isFree());
   }
 
   /**
-   * @returns {CAMTable}
+   * Returns the CAM table of the device this adapter is mounted on.
+   *
+   * @returns {CAMTable} The CAM table of the device.
    */
   _getCAMTable() {
+    /**
+     * Returns the CAM table of the device this adapter is mounted on.
+     *
+     * @returns {CAMTable} The CAM table of the device.
+     */
     return this.mountOn.camTable;
   }
 
@@ -184,43 +201,58 @@ export default class NetworkAdapter {
   }
 
   /**
-   * Connects this NetworkAdapter with other one
-   * pushing each one's instance into ports array
-   * @param {NetworkAdapter} other
-   * @param {String} thisPortName Identifier of the physical port, if not given first free port is used
-   * @param {String} otherPortName Same as above
-   * @returns a physicalLink connected the two network adapters
+   * Connects this NetworkAdapter with another NetworkAdapter
+   * by creating a physical link between two physical ports of each adapter.
+   *
+   * @param {NetworkAdapter} other - The other NetworkAdapter to connect to
+   * @param {String} [thisPortName] - The identifier of the physical port on this adapter.
+   * If not provided, the first free port is used.
+   * @param {String} [otherPortName] - The identifier of the physical port on the other adapter.
+   * If not provided, the first free port is used.
+   * @returns {PhysicalLink} - The physical link connecting the two network adapters.
+   * @throws {Error} If the given ports are invalid or not free.
    */
   connectAdapter(other, thisPort = null, otherPort = null) {
+    // Find the physical ports to use for the connection.
     thisPort = thisPort ? thisPort : this._findFreePort();
     otherPort = otherPort ? otherPort : other._findFreePort();
 
-    if (!thisPort || !otherPort) throw new Error("Given ports are invalid!");
-    if (!thisPort.isFree() || !otherPort.isFree())
+    // Check if the given ports are valid and free.
+    if (!thisPort || !otherPort) {
+      throw new Error("Given ports are invalid!");
+    }
+    if (!thisPort.isFree() || !otherPort.isFree()) {
       throw new Error("Both ports must be free!");
+    }
 
+    // Create a physical link between the two physical ports and return it.
     return thisPort.connect(otherPort);
   }
 
   /**
    * Sends a link frame through all physical ports
-   * and returns a buffer of potential responses
-   * @param {Packet} packet A transmitted Packet
-   * @param {String[]} omitPorts An array of physical port IDs that are to be omitted from sending through
-   * @returns an array of responses
+   * and returns a buffer of potential responses.
+   *
+   * @param {Packet} packet - The packet to be broadcasted.
+   * @param {String[]} [omitPorts=[]] - An array of physical port IDs that are to be omitted from
+   * sending through. Defaults to an empty array.
    */
   broadcast(packet, omitPorts = []) {
     packet.report("Broadcasting...");
+
+    // Set the output interface of the packet
     packet.outIface = this;
 
+    // Get the link frame from the packet and compute its checksum
     const frame = packet.data;
     frame.checksum = frame.computeCRC();
 
-    // Set the iface's MAC when not switching
+    // Set the interface's MAC address when not in switching mode
     if (this.mode > l.L2) {
       frame.srcMacAddress = this.macAddress;
     }
 
+    // Iterate over each physical port and send the packet if the port is not omitted and is not free
     this.ports.forEach((port) => {
       if (!omitPorts.includes(port.id) && !port.isFree()) {
         const copy = packet.copy().commit();
@@ -230,22 +262,25 @@ export default class NetworkAdapter {
   }
 
   /**
+   * Sends a packet through the network adapter.
    *
-   * @param {Packet} packet A transmitted Packet
-   * @param {String[]} omitPorts An array of physical port IDs that are to be omitted from sending through
-   * @returns
+   * @param {Packet} packet - The packet to be sent.
+   * @param {String[]} omitPorts - An array of physical port IDs to be omitted from sending through.
+   * or undefined if the packet cannot be sent.
    */
   send(packet, omitPorts = []) {
+    // Get the link frame from the packet and compute its checksum
     const frame = packet.data;
     frame.checksum = frame.computeCRC();
     packet.outIface = this;
 
-    // Hub mode
+    // Hub mode: Send the packet through all ports, except from the incoming one
     if (this.mode === l.L1) {
-      return this.broadcast(packet, omitPorts); // Send through all ports, except from the incoming one
+      return this.broadcast(packet, omitPorts);
     }
 
-    // Switch mode
+    // Switch mode: Send the packet through the port associated with the destination MAC address,
+    // or broadcast the packet if no port is associated with the destination MAC address
     if (this.mode === l.L2) {
       const port = this._getCAMTable().get(frame.dstMacAddress);
       if (port) {
@@ -257,7 +292,8 @@ export default class NetworkAdapter {
       return this.broadcast(packet, omitPorts);
     }
 
-    const port = this.ports.entries().next().value[1]; // Non switch/hub device only has 1 port
+    // Non switch/hub device mode: Send the packet through the first port if it is not free
+    const port = this.ports.entries().next().value[1];
     if (port && !port.isFree()) {
       return port.sendData(packet.commit()); // No copy has to be made
     }
@@ -267,36 +303,59 @@ export default class NetworkAdapter {
    * Accepts and filters a received frame at the adapter based on:
    * - promiscuous mode
    * - MAC address
+   *
    * @param {LinkFrame} frame Received frame
    */
   receive(packet, srcPort) {
     const frame = packet.data;
-    if (!frame.validateCRC()) return packet.report("Frame dropped");
+
+    // Validate the frame
+    if (!frame.validateCRC()) {
+      return packet.report("Frame dropped");
+    }
+
+    // Set the adapter the packet is received on
     packet.inIface = this;
 
-    // Update CAM it's present (Switch)
+    // Update the CAM if the adapter is in L2 mode (switch)
     const CAMTable = this._getCAMTable();
     CAMTable ? CAMTable.set(frame.srcMacAddress, srcPort) : 1;
 
     // Switch the packet
-    if (this.mode < l.L3) return this.send(packet, [srcPort.id]);
+    if (this.mode < l.L3) {
+      return this.send(packet, [srcPort.id]);
+    }
 
     // Router or Computer - check for the MAC address
-    if (!this._isRecipient(frame)) return packet.report("Frame dropped");
+    if (!this._isRecipient(frame)) {
+      return packet.report("Frame dropped");
+    }
 
+    // Add the frame to the accept buffer
     this.acceptBuffer.push(frame);
-    this.linkLayer.acceptFromLower(packet); // Pass up the frame
+
+    // Pass the frame up to the link layer
+    this.linkLayer.acceptFromLower(packet);
   }
 
+  /**
+   * Exports the data of the network adapter.
+   *
+   * @return {Object} An object containing the network adapter's name, IP address, MAC address, and
+   *                  an array of ports. Each port object has an id and a linkId property.
+   */
   exportData() {
+    // Create an array of ports
     const ports = [];
     this.ports.forEach((port, id) => {
+      // Add a port object to the array, with id and linkId properties
       ports.push({
         id: id,
         linkId: port.physicalLink ? port.physicalLink.id : null,
       });
     });
 
+    // Return an object with the network adapter's name, IP address, MAC address, and ports array
     return {
       name: this.name,
       ipAddress: this.ipAddress ? this.ipAddress.toString() : "",

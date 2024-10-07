@@ -12,7 +12,9 @@ import SocketAddress from "./socket/SocketAddress.js";
 import NetworkAdapter from "./linkLayer/NetworkAdapter.js";
 import CAMTable from "./linkLayer/CAMTable.js";
 
-// A parental object managing all the layers of the network stack
+/**
+ * A parental object managing all the layers of the network stack
+ */
 export default class NetworkStack {
   /**
    * Initializes the network stack of a node with required information for each layer
@@ -33,43 +35,76 @@ export default class NetworkStack {
     this.map = null;
     this._setNetworkStack(layerType);
 
-    // Tables are managed from one place
+    /**
+     * @type {CAMTable}
+     */
     this._camTable = null;
+
+    /**
+     * @type {SocketsTable}
+     */
     this._socketsTable = new SocketsTable(this);
   }
 
+  /**
+   * Returns the link layer instance
+   */
   get linkLayer() {
     return this._linkLayer;
   }
 
+  /**
+   * Returns the ip layer instance
+   */
   get ipLayer() {
     return this._ipLayer;
   }
 
+  /**
+   * Returns the transport layer instance
+   */
   get transportLayer() {
     return this._transportLayer;
   }
 
+  /**
+   * Returns the application layer instance
+   */
   get applicationLayer() {
     return this._applicationLayer;
   }
 
+  /**
+   * Returns the sockets table instance
+   */
   get socketsTable() {
     return this._socketsTable;
   }
 
+  /**
+   * Returns the routing table instance
+   */
   get routingTable() {
     return this.ipLayer.route.routingTable;
   }
 
+  /**
+   * Returns the arp table instance
+   */
   get arpTable() {
     return this.linkLayer.arp.table;
   }
 
+  /**
+   * Returns the cam table instance
+   */
   get camTable() {
     return this._camTable;
   }
 
+  /**
+   * Returns the icmp instance
+   */
   get icmp() {
     if (this.ipLayer) return this.ipLayer.icmp;
     return null;
@@ -105,7 +140,7 @@ export default class NetworkStack {
   }
 
   /**
-   * TO BE REIMPLEMENTED if a port pool is to be distinct for each IP address
+   * Checks if a port is free
    * @param {*} port
    * @returns
    */
@@ -114,25 +149,39 @@ export default class NetworkStack {
     return !this.socketsTable.get(port);
   }
 
+  /**
+   * Returns the lower layer of the provided layer
+   * @param {*} layer
+   */
   lowerLayer(layer) {
     return this.map.get(layer).lower;
   }
 
+  /**
+   * Returns the upper layer of the provided layer
+   * @param {*} layer
+   */
   upperLayer(layer) {
     return this.map.get(layer).upper;
   }
 
+  /**
+   * Initializes the CAM table
+   */
   initCAM() {
     this._camTable = new CAMTable(this.networkAdapters);
   }
 
   /**
-   * @returns A device that implements this network stack
+   * @returns {Device} the device that implements this network stack
    */
   getHost() {
     return this._device;
   }
 
+  /**
+   * Returns a random unused port
+   */
   getFreePort() {
     let port = random(1024, PORT_COUNT);
 
@@ -142,18 +191,23 @@ export default class NetworkStack {
     return port;
   }
 
+  /**
+   * Sends an ICMP ping request to the destination IP address
+   * @param {String} dstIpAddress
+   */
   ping(dstIpAddress) {
     if (this._device.layerType >= l.L3) {
       return this.icmp.ping(dstIpAddress);
     }
   }
 
-  /******** Network adapters *********/
+  /**
+   * Finds a network adapter by name
+   * @param {String} name
+   */
   findAdapter(name) {
     return this.networkAdapters.find((a) => a.name === name);
   }
-
-  /******** Sockets ********/
 
   /**
    * Finds a socket serving a particular client
@@ -209,6 +263,9 @@ export default class NetworkStack {
     return socket;
   }
 
+  /**
+   * Removes a socket from the sockets table
+   */
   removeSocket(socket) {
     this.socketsTable.remove(socket);
   }

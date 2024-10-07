@@ -2,18 +2,17 @@ import { nanoid } from "nanoid";
 import PhysicalPort from "./PhysicalPort";
 
 /**
- * Represents a physical link connecting to network interfaces/adapters
+ * Represents a physical link connecting to network interfaces/adapters.
  */
 export default class PhysicalLink {
   /**
-   * Creates a physical link between 2 ports.
-   * For simplicity, both ports must be defined on instantiation
-   * ==> plugging, unplugging is not taken into consideration
-   * ==> If one of the ports is not defined => Exception
-   * @param {PhysicalPort} port1 First port end of the link
-   * @param {PhysicalPort} port2 Second port end of the link
-   * @param {Number} speed A transmission speed (not used)
-   * @throws {Error} When two ports aren't defined
+   * Creates a physical link between two ports.
+   * Both ports must be defined on instantiation
+   *
+   * @param {PhysicalPort} port1 - The first port end of the link.
+   * @param {PhysicalPort} port2 - The second port end of the link.
+   * @param {number} [speed=100] - The transmission speed (not used).
+   * @throws {Error} When two ports aren't defined.
    */
   constructor(port1, port2, speed = 100) {
     // Check for the presence and types of ports
@@ -26,17 +25,19 @@ export default class PhysicalLink {
       throw new Error("A physical port plugged-in must be free!");
     }
 
-    // A unique identifier used e.g for export/import link distinction
+    // A unique identifier used for export/import link distinction
     this.id = `link-${nanoid(5)}`;
 
     // Represent the ports the link is plugged in
 
     /**
+     * The first port end of the link.
      * @type {PhysicalPort}
      */
     this.end1 = port1;
 
     /**
+     * The second port end of the link.
      * @type {PhysicalPort}
      */
     this.end2 = port2;
@@ -46,23 +47,34 @@ export default class PhysicalLink {
     port2.plug(this);
   }
 
-  // Not the best practice, but eases the access to a endpoint devices
+  /**
+   * Returns the adapter associated with the first port end of the link.
+   * @returns {NetworkAdapter} The adapter associated with the first port end of the link.
+   */
   get adapter1() {
     return this.end1.adapter;
   }
 
+  /**
+   * Returns the adapter associated with the second port end of the link.
+   * @returns {NetworkAdapter} The adapter associated with the second port end of the link.
+   */
   get adapter2() {
     return this.end2.adapter;
   }
 
+  /**
+   * Returns a string representation of the link.
+   * @returns {string} A string representation of the link.
+   */
   toString() {
     return `${this.adapter1} <--> ${this.adapter2}`;
   }
 
   /**
-   * Determines if data can be send through a link based on whether
+   * Determines if data can be sent through the link based on whether
    * the two endpoints are connected to a device or not.
-   * @returns Whether data can be transferred through a link.
+   * @returns {boolean} Whether data can be transferred through the link.
    */
   isTransferable() {
     try {
@@ -73,11 +85,11 @@ export default class PhysicalLink {
   }
 
   /**
-   * Unplugs both ends cancelling a physical connection
-   * => making PhysicalLink eligible for GC
+   * Unplugs both ends of the link cancelling a physical connection
+   * making the PhysicalLink eligible for garbage collection.
    */
   destroy() {
-    // Unplug a link from both the ports, must access directly due to reactivity
+    // Unplug the link from both the ports, must access directly due to reactivity
     if (this.end1) {
       this.end1.free = true;
     }
@@ -92,9 +104,9 @@ export default class PhysicalLink {
   }
 
   /**
-   * Sends the Packet to the other end of the link
-   * @param {PhysicalPort} srcPort
-   * @param {Packet} packet
+   * Sends the packet to the other end of the link.
+   * @param {PhysicalPort} srcPort - The source port.
+   * @param {Packet} packet - The packet to be sent.
    */
   transferData(srcPort, packet) {
     packet.transmitted = true;

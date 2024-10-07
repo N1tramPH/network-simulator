@@ -9,28 +9,39 @@ import NetworkStack from "../../NetworkStack";
 
 const getTTL = () => parseInt(useSimulationStore().timeToLive);
 
+/**
+ * Class that represents a routing protocol.
+ * Responsible for forwarding packets based on routing table.
+ */
 export default class RoutingProtocol {
+  /**
+   * @param {NetworkStack} stack - The network stack the protocol is associated with.
+   */
   constructor(stack) {
     /**
+     * The network stack the protocol is associated with.
      * @type {NetworkStack}
      */
     this.stack = stack;
 
     /**
+     * The routing table used by the protocol.
      * @type {RoutingTable}
      */
     this.routingTable = new RoutingTable(stack.networkAdapters);
   }
 
   /**
-   *
-   * @param {IpPacket} ipPacket
+   * Forwards an IP packet based on the routing table.
+   * @param {Packet} packet - The packet being forwarded.
+   * @param {IpPacket} ipPacket - The IP packet being forwarded.
    */
   forward(packet, ipPacket) {
     packet.report("Forwarding...");
 
     const dstIpAddress = ipPacket.dstIpAddress;
     const route = this.routingTable.query(dstIpAddress);
+
     if (!route) {
       packet.report("Route\nnot found!");
       packet.report("IP packet\ndropped");
@@ -67,13 +78,10 @@ export default class RoutingProtocol {
   }
 
   /**
-   * Finds and returns a next for an IP packet at the sender endPoint.
-   * Also sets the packet route, outIface accordingly for a link layer.
-   * Sets the src IP of the socket and IP packet based on found route, outIface.
-   * If route is not found, null is returned.
-   * @param {Packet} packet
-   * @param {IpPacket} ipPacket
-   * @returns A next route
+   * Resolves the next hop for an IP packet.
+   * @param {Packet} packet - The packet being resolved.
+   * @param {IpPacket} ipPacket - The IP packet being resolved.
+   * @returns {Object|null} - The next route or null if no route is found.
    */
   resolve(packet, ipPacket) {
     // Resolving the next hop (IP address)

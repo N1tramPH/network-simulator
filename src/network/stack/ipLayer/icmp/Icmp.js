@@ -10,12 +10,19 @@ import NetworkStack from "../../NetworkStack";
 import IpPacket from "../IpPacket";
 import IcmpMessage from "./IcmpMessage";
 
+/**
+ * Mapping of ICMP message types to their corresponding report string messages
+ * @type {Map<number, string>}
+ */
 const reportMap = new Map([
   [t.echoReply, "Reply received"],
   [t.dstUnreachable, "Destination unreachable"],
   [t.timeExceeded, "Time exceeded"],
 ]);
 
+/**
+ * Internet Control Message Protocol stack
+ */
 export default class Icmp {
   /**
    * Instantiates an Internet Control Message Protocol stack
@@ -27,18 +34,24 @@ export default class Icmp {
     /**
      * Stores sent ICMP messages for latter potential response identification.
      * (Mapping based on ICMP message id)
-     * @type {Map}
+     * @type {Map<number, IcmpMessage>}
      */
     this.buffer = new Map();
   }
 
+  /**
+   * Retrieves the host associated with the network stack
+   * @returns {Device}
+   * @private
+   */
   _getHost() {
     return this._stack.getHost();
   }
 
   /**
-   * Interface to an IP layer
+   * Sends a packet to the IP layer
    * @param {Packet} packet A packet passed to the IP layer
+   * @private
    */
   _sendToIpLayer(packet) {
     this._stack.ipLayer.acceptFromUpper(packet);

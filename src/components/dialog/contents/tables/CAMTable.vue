@@ -26,8 +26,15 @@ function clear(id) {
   camTable.clear(id);
 }
 
+/**
+ * Updates the MAC address of a CAM table entry with the specified ID.
+ *
+ * @param {number} id - The ID of the CAM table entry to update.
+ * @param {Object} updated - An object containing the updated MAC address.
+ */
 function update(id, updated) {
-  camTable.update(id, updated);
+  const newMAC = updated.macAddress;
+  camTable.update(id, newMAC);
 }
 </script>
 

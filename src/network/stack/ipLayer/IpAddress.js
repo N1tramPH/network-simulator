@@ -4,20 +4,24 @@ import ByteArray from "../../../utils/structures/ByteArray";
 import Address from "../Address";
 
 /**
- * Returns an array of IP address bytes and netmask length
- * - netmask length defaults to 32, if no CIDR is given
- * @param {*} string
+ * Parses an IP address string and returns the address and netmask length.
+ *
+ * @param {string} string - The IP address string in the format '192.168.1.1/24'.
+ * @returns {Array<Array<number>, number>} - The address as an array of bytes and the netmask length.
+ * @throws {EvalError} - If the netmask length is invalid.
+ * @throws {EvalError} - If the IP address has an invalid number of bytes.
+ * @throws {EvalError} - If the bytes are not in the range 0-255.
  */
 function parseString(string) {
   // Check for the CIDR mask mask
-  const maskSplit = string.split("/");
-  const address = maskSplit[0].split(/[.]/).map((e) => parseInt(e));
+  const [addressStr, netmaskLengthStr] = string.split("/");
+  const address = addressStr.split(/[.]/).map((e) => parseInt(e));
   let netmaskLength = 32;
 
   // Process a netmask length if there's any
-  if (maskSplit.length > 1) {
+  if (netmaskLengthStr) {
     // If the mask is invalid, keep the default mask length of 32
-    const length = parseInt(maskSplit[1]);
+    const length = parseInt(netmaskLengthStr);
 
     if (!(length >= 0 && length <= 32)) {
       throw new EvalError("Netmask length must range between 0-32!");
@@ -26,7 +30,7 @@ function parseString(string) {
     netmaskLength = length;
   }
 
-  if (address.length != 4) {
+  if (address.length !== 4) {
     throw new EvalError("An IP address must consist of 4 bytes!");
   }
 
@@ -37,11 +41,15 @@ function parseString(string) {
   return [address, netmaskLength];
 }
 
+/**
+ * Represents an IP address.
+ */
 export default class IpAddress extends Address {
   /**
-   * Defines an object for an IP address.
-   * @param {*} address An iterable of 4 bytes or
-   * a string in a standard format as '192.168.1.1'
+   * Creates an IP address object.
+   *
+   * @param {string|Array<number>|IpAddress|null} input - The IP address string,
+   * an array of bytes, or another IpAddress object. If null or undefined, a wildcard IP address is created.
    */
   constructor(input = null) {
     let address;
@@ -67,48 +75,70 @@ export default class IpAddress extends Address {
   }
 
   /**
-   * @returns An IP broadcast address
+   * Returns the broadcast IP address.
+   *
+   * @returns {IpAddress} - The broadcast IP address.
    */
   static getBroadcastAddress() {
     return new IpAddress("255.255.255.255");
   }
 
+  /**
+   * Validates an IP address string.
+   *
+   * @param {string} ipAddress - The IP address string.
+   * @returns {Array<Array<number>, number>|false} - The parsed address and netmask length, or false if invalid.
+   */
   static validate(ipAddress) {
     try {
-      const str = parseString(ipAddress);
-      return str;
+      return parseString(ipAddress);
     } catch (e) {
       return false;
     }
   }
 
+  /**
+   * Sets the netmask length.
+   *
+   * @param {number|IpAddress} value - The netmask length or an IpAddress object.
+   * @throws {Error} - If the netmask length is invalid.
+   */
   set netmaskLength(value) {
     if (value instanceof IpAddress) {
       this._netmaskLength = countLeadingOnes(value);
     } else {
       const length = parseInt(value);
 
-      if (length >= 0 || length <= 32) {
-        this._netmaskLength = length;
-      } else {
-        throw new Error();
+      if (length < 0 || length > 32) {
+        throw new Error("Netmask length must range between 0-32!");
       }
+
+      this._netmaskLength = length;
     }
   }
 
+  /**
+   * Gets the netmask length.
+   *
+   * @returns {number} - The netmask length.
+   */
   get netmaskLength() {
     return this._netmaskLength;
   }
 
   /**
-   * Returns a netmask as a ByteArray
+   * Returns the netmask as a ByteArray.
+   *
+   * @returns {ByteArray} - The netmask as a ByteArray.
    */
   get netmask() {
     return new ByteArray(4).setOnes(32 - this._netmaskLength, 32, true);
   }
 
   /**
-   * Returns an network address (having a netmask applied on)
+   * Returns the network address with the netmask applied.
+   *
+   * @returns {IpAddress} - The network address with the netmask applied.
    */
   get netAddress() {
     const netAddress = new IpAddress(this.applyMask(this.netmask));
@@ -117,27 +147,30 @@ export default class IpAddress extends Address {
   }
 
   /**
-   * @returns If the IP address is "0.0.0.0/0"
+   * Checks if the IP address is the wildcard address.
+   *
+   * @returns {boolean} - True if the IP address is the wildcard address.
    */
   isUnspecified() {
-    return this.every((byte) => byte == 0) && this.netmaskLength == 0;
+    return this.every((byte) => byte === 0) && this.netmaskLength === 0;
   }
 
   /**
-   * @param {Number} length Length of a subnet mask
-   * @returns an instance of an IP address
-   * that represents a subnet mask
+   * Applies the netmask to the IP address.
+   *
+   * @param {ByteArray} mask - The netmask as a ByteArray.
+   * @returns {Array<number>} - The IP address with the netmask applied.
    */
   applyMask(mask) {
     return this.map((byte, i) => byte & mask[i]);
   }
 
   /**
-   * Overriden compare method, allowing to compare
-   * IP addresses with their network mask applied on (netAddress)
-   * @param {IpAddress} other Other IP address
-   * @param {Boolean} applyMask Boolean indicating whether to apply mask or not, defaults to false
-   * @returns whether IP addresses with their netmask applied match
+   * Compares the IP addresses with their network mask applied.
+   *
+   * @param {IpAddress} other - The other IP address to compare with.
+   * @param {IpAddress} [mask=null] - A mask to be applied. Defaults to null.
+   * @returns {boolean} - True if the IP addresses with the netmask applied match.
    */
   compare(other, mask = null) {
     other = new IpAddress(other); // Ensure the other is of the same instance
@@ -147,18 +180,17 @@ export default class IpAddress extends Address {
       const masked1 = this.applyMask(mask);
       const masked2 = other.applyMask(mask);
 
-      return masked1.every((byte, i) => {
-        return byte == masked2[i];
-      });
+      return masked1.every((byte, i) => byte === masked2[i]);
     }
 
     return super.compare(other);
   }
 
   /**
+   * Returns the IP address as a string.
    *
-   * @param {Number} cidr Whether to return a string in CIDR or not
-   * @returns
+   * @param {boolean} [cidr=true] - Whether to include the CIDR notation or not. Defaults to true.
+   * @returns {string} - The IP address as a string.
    */
   toString(cidr = true) {
     const addr = super.toString(10, ".", 0);

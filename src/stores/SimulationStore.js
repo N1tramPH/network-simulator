@@ -251,12 +251,13 @@ export const useSimulationStore = defineStore("simulationStore", () => {
   /**
    * Computes a timeline that animates a given packet.
    * The animation is played automatically.
-   * @param {Packet} packet
+   * @param {Packet} packet A packet to be animated (can be null if animations are paused)
    */
   async function animatePacket(packet = null) {
     if (!packet || !(packet instanceof Packet))
       throw new Error("Invalid animation data!");
 
+    // Select a packet to be animated (either passed or one in animation)
     packet = !packet ? packet.animation.packet : packet;
 
     // Clear out a main timeline of any previous tweens
@@ -268,14 +269,18 @@ export const useSimulationStore = defineStore("simulationStore", () => {
     // Extract packet labels for stepping (excluding before, after events)
     state.animation.labels = uniq(packets.map((p) => p.label));
     state.animation.packet = packet; // Store the animated packet
+
+    // Animate all the packets
     animate(packets, timeline);
 
     // Settings callbacks at certain timeline points defined by labels
     // --> Storing the index of a current label for further use
     state.animation.labels.forEach((label, idx) => {
+      // When the label is reached, save the index
       timeline.call(() => (state.animation.labelIdx = idx), [], label);
     });
 
+    // Play the animation
     play();
   }
 
